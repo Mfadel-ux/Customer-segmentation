@@ -1,49 +1,42 @@
 import streamlit as st
-import streamlit.components.v1 as stc
 import pickle
+import pandas as pd
+import numpy as np
 
-with open('Logistic_Regression_model.pkl', 'rb') as file:
-    Logistic_Regression_Model = pickle.load(file)
+# ===== Load Model & Fitur =====
+with open("model_xgb.pkl", "rb") as f:
+    model = pickle.load(f)
 
-html_temp = """<div style="background-color:#000;padding:10px;border-radius:10px">
-                <h1 style="color:#fff;text-align:center">Loan Eligibility Prediction App</h1> 
-                <h4 style="color:#fff;text-align:center">Made for: Credit Team</h4> 
-                """
+with open("feature_columns.pkl", "rb") as f:
+    feature_columns = pickle.load(f)
 
-desc_temp = """ ### Loan Prediction App 
-                This app is used by Credit team for deciding Loan Application
-                
-                #### Data Source
-                Kaggle: Link <Masukkan Link>
-                """
+st.title("📊 Customer Segmentation Prediction")
+st.markdown("""
+Aplikasi ini memprediksi segmen pelanggan (A, B, C, D) berdasarkan data input.
+Model: **XGBoost**
+""")
 
-def main():
-    stc.html(html_temp)
-    menu = ["Home", "Machine Learning App"]
-    choice = st.sidebar.selectbox("Menu", menu)
+# ===== Form Input =====
+st.subheader("Masukkan Data Pelanggan")
+user_input = {}
+for col in feature_columns:
+    user_input[col] = st.number_input(f"{col}", value=0.0)
 
-    if choice == "Home":
-        st.subheader("Home")
-        st.markdown(desc_temp, unsafe_allow_html=True)
-    elif choice == "Machine Learning App":
-        run_ml_app()
+# ===== Prediksi =====
+if st.button("🔍 Prediksi"):
+    input_df = pd.DataFrame([user_input], columns=feature_columns)
 
-def run_ml_app():
-    design = """<div style="padding:15px;">
-                    <h1 style="color:#fff">Loan Eligibility Prediction</h1>
-                </div
-             """
-    st.markdown(design, unsafe_allow_html=True)
-    
+    # Prediksi
+    pred_class = model.predict(input_df)[0]
+    pred_prob = model.predict_proba(input_df)[0]
 
-    #If button is clilcked
-    pass
+    seg_map = {0: "A", 1: "B", 2: "C", 3: "D"}
+    pred_label = seg_map.get(pred_class, "Unknown")
 
-def predict(gender, married, dependent, education, self_employed, applicant_income, coApplicant_income
-                         ,loan_amount, loan_amount_term, credit_history, property_area):
-    
-    #Making prediction
-    pass
-
-if __name__ == "__main__":
-    main()
+    st.success(f"**Segmentasi: {pred_label}**")
+    st.write("📈 Probabilitas per Segmen:")
+    prob_df = pd.DataFrame({
+        "Segmen": [seg_map[i] for i in range(len(pred_prob))],
+        "Probabilitas": pred_prob
+    })
+    st.table(prob_df)
